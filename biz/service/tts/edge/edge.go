@@ -18,13 +18,55 @@ import (
 )
 
 type Communicate struct {
-	Text            string
+	Text string
+
+	// https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=tts
 	Voice           string
 	VoiceLangRegion string
-	Rate            string
-	Volume          string
-	Proxy           string
-	op              chan map[string]interface{}
+
+	//Indicates the speaking rate of the text. Speaking rate can be applied at the word or sentence level. The rate changes should be within 0.5 to 2 times the original audio. You can express rate as:
+	//A relative value:
+	//As a relative number: Expressed as a number that acts as a multiplier of the default. For example, a value of 1 results in no change in the original rate. A value of 0.5 results in a halving of the original rate. A value of 2 results in twice the original rate.
+	//As a percentage: Expressed as a number preceded by "+" (optionally) or "-" and followed by "%", indicating the relative change. For example: <prosody rate="50%">some text</prosody> or <prosody rate="-50%">some text</prosody>.
+	//A constant value:
+	//x-slow
+	//slow
+	//medium
+	//fast
+	//x-fast
+	//default
+	Rate string
+
+	//Indicates the volume level of the speaking voice. Volume changes can be applied at the sentence level. You can express the volume as:
+	//An absolute value: Expressed as a number in the range of 0.0 to 100.0, from quietest to loudest, such as 75. The default value is 100.0.
+	//A relative value:
+	//As a relative number: Expressed as a number preceded by "+" or "-" that specifies an amount to change the volume. Examples are +10 or -5.5.
+	//As a percentage: Expressed as a number preceded by "+" (optionally) or "-" and followed by "%", indicating the relative change. For example: <prosody volume="50%">some text</prosody> or <prosody volume="+3%">some text</prosody>.
+	//A constant value:
+	//silent
+	//x-soft
+	//soft
+	//medium
+	//loud
+	//x-loud
+	//default
+	Volume string
+
+	//Indicates the baseline pitch for the text. Pitch changes can be applied at the sentence level. The pitch changes should be within 0.5 to 1.5 times the original audio. You can express the pitch as:
+	//An absolute value: Expressed as a number followed by "Hz" (Hertz). For example, <prosody pitch="600Hz">some text</prosody>.
+	//A relative value:
+	//As a relative number: Expressed as a number preceded by "+" or "-" and followed by "Hz" or "st" that specifies an amount to change the pitch. For example: <prosody pitch="+80Hz">some text</prosody> or <prosody pitch="-2st">some text</prosody>. The "st" indicates the change unit is semitone, which is half of a tone (a half step) on the standard diatonic scale.
+	//As a percentage: Expressed as a number preceded by "+" (optionally) or "-" and followed by "%", indicating the relative change. For example: <prosody pitch="50%">some text</prosody> or <prosody pitch="-50%">some text</prosody>.
+	//A constant value:
+	//x-low
+	//low
+	//medium
+	//high
+	//x-high
+	//default
+	Pitch string
+	Proxy string
+	op    chan map[string]interface{}
 
 	AudioDataIndex int
 }
@@ -56,6 +98,7 @@ func NewCommunicate(text string, opts ...Option) (*Communicate, error) {
 	rate := GetRateByOption(opts)
 	volume := GetVolumeByOption(opts)
 	proxy := GetProxyByOption(opts)
+	pitch := GetPitchByOption(opts)
 	// Default values
 	if voice == "" {
 		voice = defaultVoice
@@ -66,6 +109,9 @@ func NewCommunicate(text string, opts ...Option) (*Communicate, error) {
 	}
 	if volume == "" {
 		volume = "+0%"
+	}
+	if pitch == "" {
+		pitch = "+0Hz"
 	}
 
 	// Validate voice
@@ -99,6 +145,7 @@ func NewCommunicate(text string, opts ...Option) (*Communicate, error) {
 		VoiceLangRegion: voiceLangRegion,
 		Rate:            rate,
 		Volume:          volume,
+		Pitch:           pitch,
 		Proxy:           proxy,
 	}, nil
 }
@@ -121,7 +168,7 @@ func (c *Communicate) makeHeaders() http.Header {
 func (c *Communicate) Stream() (<-chan map[string]interface{}, error) {
 	texts := splitTextByByteLength(
 		escape(removeIncompatibleCharacters(c.Text)),
-		calcMaxMesgSize(c.Voice, c.Rate, c.Volume),
+		calcMaxMesgSize(c.Voice, c.Rate, c.Volume, c.Pitch),
 	)
 	c.AudioDataIndex = len(texts)
 
@@ -178,7 +225,7 @@ func (c *Communicate) Stream() (<-chan map[string]interface{}, error) {
 			ssmlHeadersPlusData(
 				connectID(),
 				date,
-				mkssml(string(text), c.Voice, c.Rate, c.Volume),
+				mkssml(string(text), c.Voice, c.Rate, c.Volume, c.Pitch),
 			),
 		))
 		if err != nil {
@@ -426,9 +473,9 @@ func splitTextByByteLength(text string, byteLength int) [][]byte {
 	return result
 }
 
-func mkssml(text string, voice string, rate string, volume string) string {
-	ssml := fmt.Sprintf("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='%s'><prosody pitch='+0Hz' rate='%s' volume='%s'>%s</prosody></voice></speak>",
-		voice, rate, volume, text)
+func mkssml(text string, voice string, rate string, volume string, pitch string) string {
+	ssml := fmt.Sprintf("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='%s'><prosody pitch='%s' rate='%s' volume='%s'>%s</prosody></voice></speak>",
+		voice, rate, volume, text, pitch)
 	return ssml
 }
 
@@ -445,9 +492,9 @@ func ssmlHeadersPlusData(requestID string, timestamp string, ssml string) string
 	return headers + ssml
 }
 
-func calcMaxMesgSize(voice string, rate string, volume string) int {
+func calcMaxMesgSize(voice string, rate string, volume string, pitch string) int {
 	websocketMaxSize := 1 << 16
-	overheadPerMessage := len(ssmlHeadersPlusData(connectID(), dateToString(), mkssml("", voice, rate, volume))) + 50
+	overheadPerMessage := len(ssmlHeadersPlusData(connectID(), dateToString(), mkssml("", voice, rate, volume, pitch))) + 50
 	return websocketMaxSize - overheadPerMessage
 }
 
