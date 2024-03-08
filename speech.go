@@ -139,7 +139,7 @@ func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string) (*S
 
 func (s *Speech) generateHashName() string {
 	hash := sha256.Sum256([]byte(s.Text + s.Rate + s.Volume + s.Pitch))
-	return fmt.Sprintf("%s_%s", s.Voice, hex.EncodeToString(hash[:]))
+	return fmt.Sprintf("%s_%s", s.VoiceLangRegion, hex.EncodeToString(hash[:]))
 }
 
 func (s *Speech) gen(broker storage.IWriteBroker) error {
