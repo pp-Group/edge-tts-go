@@ -220,14 +220,14 @@ func (c *Communicate) Stream() (<-chan map[string]interface{}, error) {
 			conn.Close()
 			return nil, err
 		}
-
-		err = conn.WriteMessage(websocket.TextMessage, []byte(
+		connMsg := []byte(
 			ssmlHeadersPlusData(
 				connectID(),
 				date,
 				mkssml(string(text), c.Voice, c.Rate, c.Volume, c.Pitch),
 			),
-		))
+		)
+		err = conn.WriteMessage(websocket.TextMessage, connMsg)
 		if err != nil {
 			conn.Close()
 			return nil, err
@@ -475,7 +475,7 @@ func splitTextByByteLength(text string, byteLength int) [][]byte {
 
 func mkssml(text string, voice string, rate string, volume string, pitch string) string {
 	ssml := fmt.Sprintf("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='%s'><prosody pitch='%s' rate='%s' volume='%s'>%s</prosody></voice></speak>",
-		voice, rate, volume, text, pitch)
+		voice, pitch, rate, volume, text)
 	return ssml
 }
 
