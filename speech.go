@@ -39,7 +39,7 @@ func NewLocalSpeech(c *edge.Communicate, folder string) (*LocalSpeech, error) {
 }
 
 func (speech *LocalSpeech) GenTTS() (string, func() error) {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
+	fileName := speech.generateHashName() + ".mp3"
 	return fileName, func() error {
 		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
 			return speech.Writer(speech.FileName, nil)
@@ -78,7 +78,7 @@ func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string) 
 }
 
 func (speech *OssSpeech) GenTTS() (string, func() error) {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
+	fileName := speech.generateHashName() + ".mp3"
 	return fileName, func() error {
 		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
 			return speech.Writer(speech.FileName, func() interface{} {
@@ -97,7 +97,7 @@ func (speech *OssSpeech) URL(filename string) (string, error) {
 }
 
 func gentts(speech *Speech, brokerFunc func() (storage.IWriteBroker, error)) error {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
+	fileName := speech.generateHashName() + ".mp3"
 
 	speech.FileName = fileName
 
@@ -137,6 +137,11 @@ func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string) (*S
 	return s, nil
 }
 
+func (s *Speech) generateHashName() string {
+	hash := sha256.Sum256([]byte(s.Text + s.Rate + s.Volume + s.Pitch))
+	return fmt.Sprintf("%s_%s", s.VoiceLangRegion, hex.EncodeToString(hash[:]))
+}
+
 func (s *Speech) gen(broker storage.IWriteBroker) error {
 	op, err := s.Stream()
 	if err != nil {
@@ -170,11 +175,6 @@ func (s *Speech) gen(broker storage.IWriteBroker) error {
 	}
 	broker.Close()
 	return nil
-}
-
-func generateHashName(name, voice string) string {
-	hash := sha256.Sum256([]byte(name))
-	return fmt.Sprintf("%s_%s", voice, hex.EncodeToString(hash[:]))
 }
 
 type OssSpeechFactory struct {
