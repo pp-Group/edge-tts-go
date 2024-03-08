@@ -8,10 +8,11 @@ type Option struct {
 type optionID int
 
 const (
-	optionIDVoice  optionID = 1
-	optionIDRate   optionID = 2
-	optionIDVolume optionID = 3
-	optionIDProxy  optionID = 4
+	optionIDVoice optionID = iota
+	optionIDRate
+	optionIDVolume
+	optionIDProxy
+	optionIDPitch
 )
 
 // WithVoice get voice config here: https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support?tabs=tts
@@ -73,6 +74,22 @@ func WithProxy(voice string) Option {
 func GetProxyByOption(opts []Option) string {
 	for _, opt := range opts {
 		if opt.OptID == optionIDProxy {
+			return opt.Param
+		}
+	}
+	return ""
+}
+
+func WithPitch(pitch string) Option {
+	return Option{
+		OptID: optionIDPitch,
+		Param: pitch,
+	}
+}
+
+func GetPitchByOption(opts []Option) string {
+	for _, opt := range opts {
+		if opt.OptID == optionIDPitch {
 			return opt.Param
 		}
 	}
