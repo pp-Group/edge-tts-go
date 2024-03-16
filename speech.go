@@ -14,6 +14,7 @@ import (
 type ISpeech interface {
 	GenTTS() (string, func() error)
 	URL(filename string) (string, error)
+	GetFolder() string
 }
 
 var _ ISpeech = new(LocalSpeech)
@@ -138,8 +139,12 @@ func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string) (*S
 }
 
 func (s *Speech) generateHashName() string {
-	hash := sha256.Sum256([]byte(s.Text + s.Rate + s.Volume + s.Pitch))
-	return fmt.Sprintf("%s_%s", s.VoiceLangRegion, hex.EncodeToString(hash[:]))
+	hash := sha256.Sum256([]byte(s.VoiceLangRegion + s.Text + s.Rate + s.Volume + s.Pitch))
+	return hex.EncodeToString(hash[:])
+}
+
+func (s *Speech) GetFolder() string {
+	return s.Folder
 }
 
 func (s *Speech) gen(broker storage.IWriteBroker) error {
